@@ -78,10 +78,10 @@ class Tutorial:
         self.timer: float = 0.0
         self.dismissed: bool = False  # set True when fully done
 
-        self.font_title = pygame.font.SysFont(None, 56)
-        self.font_body = pygame.font.SysFont(None, 36)
-        self.font_step = pygame.font.SysFont(None, 28)
-        self.font_skip = pygame.font.SysFont(None, 24)
+        self.font_title = pygame.font.SysFont(None, 36)
+        self.font_body = pygame.font.SysFont(None, 24)
+        self.font_step = pygame.font.SysFont(None, 20)
+        self.font_skip = pygame.font.SysFont(None, 18)
 
         # Auto-advance tracking
         self._player_moved: bool = False
@@ -175,11 +175,11 @@ class Tutorial:
 
         _, title, body = STEPS[self.step]
 
-        # Panel dimensions — much larger
-        panel_w = 800
+        # Panel dimensions — wide enough so text doesn't spill out
+        panel_w = 680
         lines = body.split("\n")
-        line_h = 36
-        panel_h = 100 + len(lines) * line_h + 40
+        line_h = 26
+        panel_h = 80 + len(lines) * line_h + 30
         px = (SCREEN_W - panel_w) // 2
         py = SCREEN_H - panel_h - 70  # above the bottom bar
 
@@ -199,27 +199,27 @@ class Tutorial:
             int(100 * pulse), int(220 * pulse), int(80 * pulse)
         )
         pygame.draw.rect(surface, border_color,
-                         (px, py, panel_w, panel_h), 3, border_radius=12)
+                         (px, py, panel_w, panel_h), 2, border_radius=10)
 
         # Step counter
         step_text = f"Step {self.step + 1}/{len(STEPS)}"
         ss = self.font_step.render(step_text, True, PAL["text_dim"])
-        surface.blit(ss, (px + panel_w - ss.get_width() - 20, py + 16))
+        surface.blit(ss, (px + panel_w - ss.get_width() - 16, py + 14))
 
         # Title
         ts = self.font_title.render(title, True, PAL["text_gold"])
-        surface.blit(ts, (px + 30, py + 20))
+        surface.blit(ts, (px + 24, py + 16))
 
         # Body text (multi-line)
-        body_start_y = py + 85
+        body_start_y = py + 65
         for i, line in enumerate(lines):
             if not line.strip():
                 continue
             color = PAL["text_light"] if not line.startswith("•") else PAL["accent"]
             ls = self.font_body.render(line, True, color)
-            surface.blit(ls, (px + 40, body_start_y + i * line_h))
+            surface.blit(ls, (px + 24, body_start_y + i * line_h))
 
         # Skip hint
         skip = self.font_skip.render("ESC to skip tutorial", True,
                                      (120, 120, 100))
-        surface.blit(skip, (px + 30, py + panel_h - 30))
+        surface.blit(skip, (px + 24, py + panel_h - 24))
