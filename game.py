@@ -7,9 +7,11 @@ import random
 import pygame
 
 from camera import Camera
+from floats import CropTooltip, FloatingTextSystem, TileTooltip
 from hud import HUD
 from inventory import Inventory
 from menu import GameOverScreen, TitleScreen
+from music import stop_music, update_music
 from particles import ParticleSystem
 from player import Player
 from settings import (
@@ -24,6 +26,7 @@ from shop import Shop
 from sky import draw_sky, draw_sun_moon, draw_world_tint
 from sounds import play as play_sfx, preload_sounds
 from sprites import preload
+from tutorial import Tutorial
 from world import World
 
 T = TILE_SIZE
@@ -35,10 +38,10 @@ SCENE_OVER = "over"
 
 # Solstice event types
 EVENT_NONE = "none"
-EVENT_SUNBURST = "sunburst"       # All crops grow 3x faster
-EVENT_RAIN = "rain"               # Auto-water all planted crops
-EVENT_GOLDEN_SEEDS = "golden_seeds"  # Free seeds gift
-EVENT_SOLSTICE_WIND = "solstice_wind"  # Money bonus from harvest
+EVENT_SUNBURST = "sunburst"
+EVENT_RAIN = "rain"
+EVENT_GOLDEN_SEEDS = "golden_seeds"
+EVENT_SOLSTICE_WIND = "solstice_wind"
 
 
 class Game:
@@ -64,6 +67,10 @@ class Game:
         self.hud: HUD = None  # type: ignore
         self.shop: Shop = None  # type: ignore
         self.particles: ParticleSystem = None  # type: ignore
+        self.tutorial: Tutorial = None  # type: ignore
+        self.floats: FloatingTextSystem = None  # type: ignore
+        self.crop_tooltip: CropTooltip = None  # type: ignore
+        self.tile_tooltip: TileTooltip = None  # type: ignore
 
         self.time_elapsed: float = 0.0
         self.time_fraction: float = 0.0
@@ -84,6 +91,11 @@ class Game:
         # Footstep sound timer
         self._step_timer: float = 0.0
 
+        # Screen transition
+        self._fade_alpha: int = 0
+        self._fade_target: int = 0
+        self._fade_speed: int = 400  # alpha per second
+
     # ------------------------------------------------------------------
     # Game reset
     # ------------------------------------------------------------------
@@ -91,7 +103,6 @@ class Game:
     def _new_game(self) -> None:
         """Initialise / reset all game state."""
         self.world = World()
-        # Player starts near the farm entrance
         start_col = FARM_X + FARM_COLS // 2
         start_row = FARM_Y + FARM_ROWS + 2
         self.player = Player(start_col, start_row)
@@ -100,6 +111,10 @@ class Game:
         self.hud = HUD()
         self.shop = Shop()
         self.particles = ParticleSystem()
+        self.tutorial = Tutorial()
+        self.floats = FloatingTextSystem()
+        self.crop_tooltip = CropTooltip()
+        self.tile_tooltip = TileTooltip()
 
         self.time_elapsed = 0.0
         self.time_fraction = 0.0
@@ -112,6 +127,8 @@ class Game:
         self.golden_hour_notified = False
         self._ambient_timer = 0.0
         self._step_timer = 0.0
+        self._fade_alpha = 255  # start faded in from black
+        self._fade_target = 0
 
     # ------------------------------------------------------------------
     # Event handling
@@ -135,9 +152,13 @@ class Game:
 
         # --- SCENE_PLAY ---
 
+        # Tutorial takes priority
+        if self.tutorial and self.tutorial.active:
+            if self.tutorial.handle_event(event):
+                return
+
         # Shop takes priority if open
         if self.shop.is_open:
-            # Update sell multiplier for golden hour
             self.shop.sell_multiplier = (
                 GOLDEN_HOUR_MULTIPLIER if self._is_golden_hour() else 1.0
             )
@@ -159,14 +180,15 @@ class Game:
         elif action == "cycle_seed":
             play_sfx("select")
 
-        # Toggle inventory / shop with TAB
+        # Toggle shop with TAB
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_TAB:
-                # Check if player is near shop
                 fc, fr = self.player.facing_tile()
                 if self.world.is_shop(fc, fr):
                     self.shop.toggle()
                     play_sfx("select")
+                    if self.tutorial and self.tutorial.active:
+                        self.tutorial.notify("shop_opened")
 
     # ------------------------------------------------------------------
     # Tool usage
@@ -183,14 +205,15 @@ class Game:
                 self.particles.emit_till(px, py)
                 self._show_message("Tilled the soil!")
                 play_sfx("till")
+                if self.tutorial and self.tutorial.active:
+                    self.tutorial.notify("tilled")
             else:
                 tile = self.world.get_tile(fc, fr)
-                if tile in (2, 3, 9):  # already tilled/watered/planted
+                if tile in (2, 3, 9):
                     self._show_message("Already tilled!")
                     play_sfx("deny")
 
         elif tool == TOOL_WATER:
-            # Check if facing water source → refill
             if self.world.is_water_source(fc, fr):
                 if self.player.refill_water():
                     self.particles.emit_water(px, py)
@@ -211,6 +234,8 @@ class Game:
                 self.particles.emit_water(px, py)
                 self._show_message("Watered!")
                 play_sfx("water")
+                if self.tutorial and self.tutorial.active:
+                    self.tutorial.notify("watered")
 
         elif tool == TOOL_SEEDS:
             seed_type = self.player.current_seed_type
@@ -225,33 +250,33 @@ class Game:
                     name = CROPS[seed_type]["name"]
                     self._show_message(f"Planted {name}!")
                     play_sfx("plant")
-                    # Solstice Bloom gets magic particles
                     if seed_type == "solstice_bloom":
                         self.particles.emit_solstice_magic(px, py)
+                    if self.tutorial and self.tutorial.active:
+                        self.tutorial.notify("planted")
             else:
                 tile = self.world.get_tile(fc, fr)
-                if tile == 1:  # dirt
+                if tile == 1:
                     self._show_message("Till the soil first! (use Hoe)")
-                elif tile == 9:  # planted
+                elif tile == 9:
                     self._show_message("Already planted here!")
                 play_sfx("deny")
 
         elif tool == TOOL_HANDS:
-            # Check shop interaction
             if self.world.is_shop(fc, fr):
                 self.shop.open()
                 play_sfx("select")
+                if self.tutorial and self.tutorial.active:
+                    self.tutorial.notify("shop_opened")
                 return
 
             result = self.world.harvest(fc, fr)
             if result:
                 crop_type, value = result
-                # Golden hour bonus
                 bonus_text = ""
                 if self._is_golden_hour():
                     value = int(value * GOLDEN_HOUR_MULTIPLIER)
-                    bonus_text = " (2x Golden Hour!)"
-                # Solstice Wind event bonus
+                    bonus_text = " (2x Golden!)"
                 if self.current_event == EVENT_SOLSTICE_WIND:
                     value = int(value * 1.5)
                     bonus_text += " (+50% Wind!)"
@@ -263,15 +288,17 @@ class Game:
                 self._show_message(
                     f"Harvested {name}! (+{value}g){bonus_text}")
                 play_sfx("harvest")
+                # Floating gold number
+                self.floats.spawn_gold(value, px, py - 16)
+                if self.tutorial and self.tutorial.active:
+                    self.tutorial.notify("harvested")
             else:
-                # Check if crop needs water
                 crop = self.world.crops.get((fc, fr))
                 if crop and crop.needs_water:
                     self._show_message("This crop needs water! 💧")
                 elif crop and not crop.ready:
                     pct = int(crop.progress * 100)
-                    self._show_message(
-                        f"Growing... {pct}% 🌱")
+                    self._show_message(f"Growing... {pct}% 🌱")
                 elif crop and crop.is_solstice_only:
                     from farming import get_sun_multiplier
                     if get_sun_multiplier(self.time_fraction) < 1.0:
@@ -286,7 +313,6 @@ class Game:
         return GOLDEN_HOUR_START <= self.time_fraction <= GOLDEN_HOUR_END
 
     def _trigger_event(self) -> None:
-        """Pick and activate a random solstice event."""
         events = [EVENT_SUNBURST, EVENT_RAIN, EVENT_GOLDEN_SEEDS,
                   EVENT_SOLSTICE_WIND]
         self.current_event = random.choice(events)
@@ -295,32 +321,25 @@ class Game:
 
         if self.current_event == EVENT_SUNBURST:
             self._show_message("☀️ SUNBURST! All crops grow 3× faster!")
-            # Boost all crops
             for crop in self.world.crops.values():
                 crop.event_boost = 3.0
-
         elif self.current_event == EVENT_RAIN:
             self._show_message("🌧️ LIGHT RAIN! All crops auto-watered!")
-            # Water all crops that need it
             for (col, row), crop in self.world.crops.items():
                 if crop.needs_water:
                     crop.water_crop()
-
         elif self.current_event == EVENT_GOLDEN_SEEDS:
-            # Give player free seeds
             gift_type = random.choice(list(CROPS.keys()))
             gift_count = random.randint(2, 5)
             self.inventory.add_seeds(gift_type, gift_count)
             name = CROPS[gift_type]["name"]
             self._show_message(
                 f"🎁 SOLSTICE GIFT! +{gift_count} {name} Seeds!")
-
         elif self.current_event == EVENT_SOLSTICE_WIND:
             self._show_message(
                 "🌬️ SOLSTICE WIND! Harvest value +50% for 15s!")
 
     def _end_event(self) -> None:
-        """Clean up when an event expires."""
         if self.current_event == EVENT_SUNBURST:
             for crop in self.world.crops.values():
                 crop.event_boost = 1.0
@@ -333,26 +352,39 @@ class Game:
     # ------------------------------------------------------------------
 
     def update(self, dt: float) -> None:
+        # Screen fade
+        if self._fade_alpha != self._fade_target:
+            if self._fade_alpha < self._fade_target:
+                self._fade_alpha = min(self._fade_target,
+                                       self._fade_alpha + int(self._fade_speed * dt))
+            else:
+                self._fade_alpha = max(self._fade_target,
+                                       self._fade_alpha - int(self._fade_speed * dt))
+
         if self.scene == SCENE_TITLE:
             self.title_screen.update(dt)
             return
 
         if self.scene == SCENE_OVER:
+            stop_music()
             return
 
         # --- SCENE_PLAY ---
         if self.shop.is_open:
-            return  # pause world while shopping
+            return
 
         # Day timer
         self.time_elapsed += dt
         self.time_fraction = min(self.time_elapsed / DAY_DURATION, 1.0)
 
         if self.time_fraction >= 1.0:
-            # Auto-sell remaining crops
             self.inventory.sell_all()
+            self._fade_target = 255
             self.scene = SCENE_OVER
             return
+
+        # Music
+        update_music(self.time_fraction)
 
         # Golden hour notification
         if self._is_golden_hour() and not self.golden_hour_notified:
@@ -377,6 +409,11 @@ class Game:
         # Player
         self.player.update(dt, self.world.is_solid)
 
+        # Tutorial
+        if self.tutorial and self.tutorial.active:
+            self.tutorial.update(dt, self.player.tile_col,
+                                 self.player.tile_row)
+
         # Footstep sound
         if self.player.moving:
             self._step_timer += dt
@@ -392,6 +429,9 @@ class Game:
         # Particles
         self.particles.update(dt)
 
+        # Floating texts
+        self.floats.update(dt)
+
         # Ambient particles
         self._ambient_timer += dt
         if self._ambient_timer >= 0.15:
@@ -403,21 +443,15 @@ class Game:
             self.message_timer -= dt
 
     def _spawn_ambient_particles(self) -> None:
-        """Spawn time-appropriate ambient particles."""
         tf = self.time_fraction
         cx, cy = self.camera.x, self.camera.y
 
-        # Sun sparkles during peak sun (0.3 - 0.6)
         if 0.30 < tf < 0.60:
             self.particles.emit_sun_sparkles(
                 SCREEN_W, SCREEN_H, cx, cy, 1)
-
-        # Fireflies at dusk (0.75+)
         if tf > 0.75:
             self.particles.emit_fireflies(
                 SCREEN_W, SCREEN_H, cx, cy, 1)
-
-        # Rain particles during rain event
         if self.current_event == EVENT_RAIN:
             self.particles.emit_rain(SCREEN_W, cx, cy, 4)
 
@@ -428,6 +462,7 @@ class Game:
     def draw(self) -> None:
         if self.scene == SCENE_TITLE:
             self.title_screen.draw(self.screen)
+            self._draw_fade()
             return
 
         # --- Sky background ---
@@ -444,8 +479,17 @@ class Game:
         # --- Particles ---
         self.particles.draw(self.screen, ox, oy)
 
+        # --- Floating texts ---
+        self.floats.draw(self.screen, ox, oy)
+
         # --- World tint (dawn/dusk darkness) ---
         draw_world_tint(self.screen, self.time_fraction)
+
+        # --- Crop tooltip ---
+        if not self.shop.is_open and (not self.tutorial or
+                                       not self.tutorial.active or
+                                       self.tutorial.step > 4):
+            self._draw_tooltips()
 
         # --- Event banner ---
         if self.current_event != EVENT_NONE:
@@ -460,6 +504,10 @@ class Game:
                       self.time_fraction)
         self.hud.draw_water(self.screen, self.player.water,
                             self.player.water_max)
+
+        # --- Tutorial overlay ---
+        if self.tutorial and self.tutorial.active:
+            self.tutorial.draw(self.screen)
 
         # --- Shop ---
         self.shop.draw(self.screen, self.inventory)
@@ -477,8 +525,28 @@ class Game:
                 inv.total_earned, inv.total_planted,
             )
 
+        # --- Screen fade ---
+        self._draw_fade()
+
+    def _draw_tooltips(self) -> None:
+        """Draw crop info or tile hint for the facing tile."""
+        fc, fr = self.player.facing_tile()
+        ox, oy = self.camera.offset
+        crop = self.world.crops.get((fc, fr))
+
+        if crop:
+            self.crop_tooltip.draw(
+                self.screen, crop, fc, fr, ox, oy,
+                is_golden_hour=self._is_golden_hour(),
+            )
+        else:
+            tile_type = self.world.get_tile(fc, fr)
+            hint = self.tile_tooltip.get_hint(tile_type,
+                                               self.player.current_tool)
+            if hint:
+                self.tile_tooltip.draw(self.screen, hint, fc, fr, ox, oy)
+
     def _draw_event_banner(self) -> None:
-        """Draw a coloured banner showing the active event."""
         banners = {
             EVENT_SUNBURST: ("☀️ SUNBURST — 3× Growth!", (255, 200, 40)),
             EVENT_RAIN: ("🌧️ LIGHT RAIN — Auto Water!", (80, 160, 240)),
@@ -492,7 +560,6 @@ class Game:
         font = pygame.font.SysFont(None, 24)
         ts = font.render(text, True, color)
 
-        # Timer bar
         remaining = max(0, self.event_timer / EVENT_DURATION)
         bar_w = int(ts.get_width() + 20)
         bar_h = 4
@@ -500,15 +567,11 @@ class Game:
         bx = (SCREEN_W - bar_w) // 2
         by = 46
 
-        # Background
         bg = pygame.Surface((bar_w, ts.get_height() + 10), pygame.SRCALPHA)
         bg.fill((0, 0, 0, 140))
         self.screen.blit(bg, (bx, by))
-
-        # Text
         self.screen.blit(ts, (bx + 10, by + 3))
 
-        # Timer bar under text
         bar_y = by + ts.get_height() + 4
         pygame.draw.rect(self.screen, (40, 40, 40),
                          (bx, bar_y, bar_w, bar_h))
@@ -518,10 +581,17 @@ class Game:
                              (bx, bar_y, fill_w, bar_h))
 
     def _draw_golden_hour_glow(self) -> None:
-        """Subtle warm glow overlay during golden hour."""
         overlay = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
         overlay.fill((255, 180, 50, 18))
         self.screen.blit(overlay, (0, 0))
+
+    def _draw_fade(self) -> None:
+        """Draw screen fade overlay for transitions."""
+        if self._fade_alpha <= 0:
+            return
+        fade = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
+        fade.fill((0, 0, 0, min(255, self._fade_alpha)))
+        self.screen.blit(fade, (0, 0))
 
     # ------------------------------------------------------------------
     # Helpers
