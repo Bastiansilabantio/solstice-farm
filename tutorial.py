@@ -78,10 +78,10 @@ class Tutorial:
         self.timer: float = 0.0
         self.dismissed: bool = False  # set True when fully done
 
-        self.font_title = pygame.font.SysFont(None, 36)
-        self.font_body = pygame.font.SysFont(None, 22)
-        self.font_step = pygame.font.SysFont(None, 18)
-        self.font_skip = pygame.font.SysFont(None, 18)
+        self.font_title = pygame.font.SysFont(None, 56)
+        self.font_body = pygame.font.SysFont(None, 36)
+        self.font_step = pygame.font.SysFont(None, 28)
+        self.font_skip = pygame.font.SysFont(None, 24)
 
         # Auto-advance tracking
         self._player_moved: bool = False
@@ -133,10 +133,10 @@ class Tutorial:
                 self.dismissed = True
                 return True
 
-            # SPACE to advance on text-only steps
+            # SPACE to advance on text-only steps or if player gets stuck
             key = self.current_step_key
             if event.key == pygame.K_SPACE:
-                if key in ("start", "wait_grow", "done"):
+                if key in ("start", "move", "wait_grow", "done"):
                     self._advance()
                     return True
 
@@ -175,11 +175,11 @@ class Tutorial:
 
         _, title, body = STEPS[self.step]
 
-        # Panel dimensions
-        panel_w = 480
+        # Panel dimensions — much larger
+        panel_w = 800
         lines = body.split("\n")
-        line_h = 22
-        panel_h = 70 + len(lines) * line_h + 20
+        line_h = 36
+        panel_h = 100 + len(lines) * line_h + 40
         px = (SCREEN_W - panel_w) // 2
         py = SCREEN_H - panel_h - 70  # above the bottom bar
 
@@ -190,7 +190,7 @@ class Tutorial:
 
         # Panel background
         panel = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
-        panel.fill((15, 25, 20, 230))
+        panel.fill((15, 25, 20, 240))
         surface.blit(panel, (px, py))
 
         # Border with glow
@@ -199,26 +199,27 @@ class Tutorial:
             int(100 * pulse), int(220 * pulse), int(80 * pulse)
         )
         pygame.draw.rect(surface, border_color,
-                         (px, py, panel_w, panel_h), 2, border_radius=8)
+                         (px, py, panel_w, panel_h), 3, border_radius=12)
 
         # Step counter
         step_text = f"Step {self.step + 1}/{len(STEPS)}"
         ss = self.font_step.render(step_text, True, PAL["text_dim"])
-        surface.blit(ss, (px + panel_w - ss.get_width() - 12, py + 8))
+        surface.blit(ss, (px + panel_w - ss.get_width() - 20, py + 16))
 
         # Title
         ts = self.font_title.render(title, True, PAL["text_gold"])
-        surface.blit(ts, (px + 20, py + 12))
+        surface.blit(ts, (px + 30, py + 20))
 
         # Body text (multi-line)
+        body_start_y = py + 85
         for i, line in enumerate(lines):
             if not line.strip():
                 continue
             color = PAL["text_light"] if not line.startswith("•") else PAL["accent"]
             ls = self.font_body.render(line, True, color)
-            surface.blit(ls, (px + 24, py + 55 + i * line_h))
+            surface.blit(ls, (px + 40, body_start_y + i * line_h))
 
         # Skip hint
         skip = self.font_skip.render("ESC to skip tutorial", True,
-                                     (100, 100, 80))
-        surface.blit(skip, (px + 20, py + panel_h - 20))
+                                     (120, 120, 100))
+        surface.blit(skip, (px + 30, py + panel_h - 30))
