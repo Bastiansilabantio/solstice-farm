@@ -111,7 +111,7 @@ class Game:
         self.hud = HUD()
         self.shop = Shop()
         self.particles = ParticleSystem()
-        self.tutorial = Tutorial()
+        self.tutorial = None  # Disabled tutorial per user request
         self.floats = FloatingTextSystem()
         self.crop_tooltip = CropTooltip()
         self.tile_tooltip = TileTooltip()
