@@ -193,7 +193,7 @@ class World:
         return False
 
     def can_plant(self, col: int, row: int) -> bool:
-        return self.get_tile(col, row) in (TILE_TILLED, TILE_WATERED)
+        return self.get_tile(col, row) == TILE_WATERED
 
     def plant(self, col: int, row: int, crop_type: str) -> bool:
         if self.can_plant(col, row):

@@ -258,6 +258,8 @@ class Game:
                 tile = self.world.get_tile(fc, fr)
                 if tile == 1:
                     self._show_message("Till the soil first! (use Hoe)")
+                elif tile == 2:
+                    self._show_message("Water the soil first! (use Water Can)")
                 elif tile == 9:
                     self._show_message("Already planted here!")
                 play_sfx("deny")

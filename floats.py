@@ -219,8 +219,8 @@ class TileTooltip:
             if tool == "water_can":
                 return "Press SPACE to water"
             if tool == "seeds":
-                return "Press SPACE to plant"
-            return "Water (2) or Plant (3)"
+                return "Must water soil first!"
+            return "Use Water Can (2) to water"
 
         if tile_type == TILE_WATERED:
             if tool == "seeds":
