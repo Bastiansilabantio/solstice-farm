@@ -8,6 +8,7 @@ cached as pygame.Surface objects.
 from __future__ import annotations
 
 import math
+import os
 import random
 from typing import Dict, List, Tuple
 
@@ -312,15 +313,52 @@ def _gen_player_frame(direction: int, frame: int) -> pygame.Surface:
     return s
 
 
+_player_sheet: pygame.Surface | None = None
+_player_sheet_loaded: bool = False
+
+
 def get_player_frames(direction: int) -> List[pygame.Surface]:
     """Return [idle, walk1, walk2] frames for the given direction."""
+    global _player_sheet, _player_sheet_loaded
+
+    if not _player_sheet_loaded:
+        _player_sheet_loaded = True
+        try:
+            path = os.path.join(os.path.dirname(__file__), "assets", "images", "assetkarakter.png")
+            if os.path.exists(path):
+                _player_sheet = pygame.image.load(path).convert_alpha()
+        except pygame.error:
+            pass
+
     key = DIR_NAMES[direction]
     if key not in _player_cache:
-        _player_cache[key] = [
-            _gen_player_frame(direction, 0),
-            _gen_player_frame(direction, 1),
-            _gen_player_frame(direction, 2),
-        ]
+        if _player_sheet:
+            # Layout: Row = direction (0=down, 1=up, 2=left, 3=right)
+            # Col: 0 = walk1, 1 = idle, 2 = walk2
+            frames = []
+            
+            # Idle (Col 1)
+            s_idle = _make(T, T)
+            s_idle.blit(_player_sheet, (0, 0), (1 * T, direction * T, T, T))
+            frames.append(s_idle)
+            
+            # Walk 1 (Col 0)
+            s_walk1 = _make(T, T)
+            s_walk1.blit(_player_sheet, (0, 0), (0 * T, direction * T, T, T))
+            frames.append(s_walk1)
+            
+            # Walk 2 (Col 2)
+            s_walk2 = _make(T, T)
+            s_walk2.blit(_player_sheet, (0, 0), (2 * T, direction * T, T, T))
+            frames.append(s_walk2)
+            
+            _player_cache[key] = frames
+        else:
+            _player_cache[key] = [
+                _gen_player_frame(direction, 0),
+                _gen_player_frame(direction, 1),
+                _gen_player_frame(direction, 2),
+            ]
     return _player_cache[key]
 
 
