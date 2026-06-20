@@ -315,52 +315,71 @@ def _gen_player_frame(direction: int, frame: int) -> pygame.Surface:
 
 _player_sheet: pygame.Surface | None = None
 _player_sheet_loaded: bool = False
+# Pre-sliced frames per direction: dict[str, list[Surface]]
+_player_custom_frames: Dict[str, List[pygame.Surface]] = {}
 
 
 def get_player_frames(direction: int) -> List[pygame.Surface]:
-    """Return [idle, walk1, walk2] frames for the given direction."""
+    """Return animation frames for the given direction.
+
+    Spritesheet layout (from sprite.py):
+      Row 0 -> Down (front)
+      Row 1 -> Left
+      Row 2 -> Left variant (unused)
+      Row 3 -> Up (back)
+      Right -> horizontal flip of Left frames
+    """
     global _player_sheet, _player_sheet_loaded
 
     if not _player_sheet_loaded:
         _player_sheet_loaded = True
         base = os.path.dirname(__file__)
-        # Try new filename first, fall back to old one
-        for fname in ("player_spritesheet.png", "assetkarakter.png"):
-            path = os.path.join(base, "assets", "images", fname)
+        # Search in multiple locations
+        candidates = [
+            os.path.join(base, "assets", "images", "player_spritesheet.png"),
+            os.path.join(base, "player_spritesheet.png"),
+            os.path.join(base, "assets", "images", "assetkarakter.png"),
+        ]
+        for path in candidates:
             if os.path.exists(path):
                 try:
                     _player_sheet = pygame.image.load(path).convert_alpha()
-                    # Automatically remove background color based on top-left pixel
                     bg_color = _player_sheet.get_at((0, 0))
                     _player_sheet.set_colorkey(bg_color)
                 except pygame.error:
                     pass
                 break
 
-    # Spritesheet row mapping:
-    # Row 0 = Down, Row 1 = Left, Row 2 = Right, Row 3 = Up
-    # Game directions: DIR_DOWN=0, DIR_UP=1, DIR_LEFT=2, DIR_RIGHT=3
-    _DIR_TO_ROW = {0: 0, 1: 3, 2: 1, 3: 2}
+        # Pre-slice all directions once
+        if _player_sheet:
+            sw = _player_sheet.get_width()
+            sh = _player_sheet.get_height()
+            cols = 6
+            fw = sw // cols
+            fh = sh // 4
+
+            def slice_row(row: int) -> List[pygame.Surface]:
+                result = []
+                for c in range(cols):
+                    rect = pygame.Rect(c * fw, row * fh, fw, fh)
+                    raw = _player_sheet.subsurface(rect).copy()
+                    scaled = pygame.transform.smoothscale(raw, (T, T))
+                    result.append(scaled)
+                return result
+
+            _player_custom_frames["down"] = slice_row(0)
+            _player_custom_frames["left"] = slice_row(1)
+            _player_custom_frames["up"] = slice_row(3)
+            # Right = horizontal flip of Left
+            _player_custom_frames["right"] = [
+                pygame.transform.flip(f, True, False)
+                for f in _player_custom_frames["left"]
+            ]
 
     key = DIR_NAMES[direction]
     if key not in _player_cache:
-        if _player_sheet:
-            sheet_w = _player_sheet.get_width()
-            sheet_h = _player_sheet.get_height()
-            num_cols = max(1, round(sheet_w / (sheet_h / 4)))
-            fw = sheet_w // num_cols
-            fh = sheet_h // 4
-            row = _DIR_TO_ROW.get(direction, direction)
-            
-            def get_frame(col: int) -> pygame.Surface:
-                rect = pygame.Rect(col * fw, row * fh, fw, fh)
-                raw_frame = _player_sheet.subsurface(rect)
-                return pygame.transform.smoothscale(raw_frame, (T, T))
-
-            # Return all frames for this direction row
-            frames = [get_frame(c) for c in range(num_cols)]
-            
-            _player_cache[key] = frames
+        if key in _player_custom_frames:
+            _player_cache[key] = _player_custom_frames[key]
         else:
             _player_cache[key] = [
                 _gen_player_frame(direction, 0),
