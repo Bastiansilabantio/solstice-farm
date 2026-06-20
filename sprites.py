@@ -327,6 +327,9 @@ def get_player_frames(direction: int) -> List[pygame.Surface]:
             path = os.path.join(os.path.dirname(__file__), "assets", "images", "assetkarakter.png")
             if os.path.exists(path):
                 _player_sheet = pygame.image.load(path).convert_alpha()
+                # Automatically remove background color based on top-left pixel
+                bg_color = _player_sheet.get_at((0, 0))
+                _player_sheet.set_colorkey(bg_color)
         except pygame.error:
             pass
 
