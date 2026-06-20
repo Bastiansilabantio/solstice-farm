@@ -255,7 +255,10 @@ class Player:
 
         screen_x = int(self.x) + cam_ox
         screen_y = int(self.y) + cam_oy
-        surface.blit(sprite, (screen_x, screen_y))
+        # Offset upward so character feet align with tile position
+        sprite_h = sprite.get_height()
+        draw_y = screen_y + T - sprite_h
+        surface.blit(sprite, (screen_x, draw_y))
 
         # Draw facing indicator (subtle)
         fc, fr = self.facing_tile()

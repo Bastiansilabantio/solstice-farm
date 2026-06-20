@@ -360,10 +360,14 @@ def get_player_frames(direction: int) -> List[pygame.Surface]:
 
             def slice_row(row: int) -> List[pygame.Surface]:
                 result = []
+                # Preserve aspect ratio: width = T, height scales proportionally
+                aspect = fh / fw
+                scaled_w = T
+                scaled_h = int(T * aspect)
                 for c in range(cols):
                     rect = pygame.Rect(c * fw, row * fh, fw, fh)
                     raw = _player_sheet.subsurface(rect).copy()
-                    scaled = pygame.transform.smoothscale(raw, (T, T))
+                    scaled = pygame.transform.smoothscale(raw, (scaled_w, scaled_h))
                     result.append(scaled)
                 return result
 
