@@ -202,9 +202,19 @@ class Player:
         # Animation
         if self.moving:
             self.anim_timer += dt
-            if self.anim_timer >= 0.18:
+            if self.anim_timer >= 0.12:
                 self.anim_timer = 0.0
-                self.anim_frame = 1 if self.anim_frame != 1 else 2
+                # Cycle through walk frames (1 .. N-1), skip frame 0 (idle)
+                frames = get_player_frames(self.direction)
+                num_frames = len(frames)
+                if num_frames <= 3:
+                    # Classic 3-frame: alternate between 1 and 2
+                    self.anim_frame = 1 if self.anim_frame != 1 else 2
+                else:
+                    # 4+ frames: cycle 1 → 2 → ... → N-1 → 1
+                    self.anim_frame += 1
+                    if self.anim_frame >= num_frames:
+                        self.anim_frame = 1
         else:
             self.anim_frame = 0
             self.anim_timer = 0.0

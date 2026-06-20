@@ -336,23 +336,19 @@ def get_player_frames(direction: int) -> List[pygame.Surface]:
     key = DIR_NAMES[direction]
     if key not in _player_cache:
         if _player_sheet:
-            fw = _player_sheet.get_width() // 3
-            fh = _player_sheet.get_height() // 4
+            sheet_w = _player_sheet.get_width()
+            sheet_h = _player_sheet.get_height()
+            num_cols = max(1, round(sheet_w / (sheet_h / 4)))
+            fw = sheet_w // num_cols
+            fh = sheet_h // 4
             
             def get_frame(col: int) -> pygame.Surface:
                 rect = pygame.Rect(col * fw, direction * fh, fw, fh)
                 raw_frame = _player_sheet.subsurface(rect)
-                # If image is pixel art, scale is better than smoothscale, but 
-                # smoothscale works better for high-res images downscaled.
                 return pygame.transform.smoothscale(raw_frame, (T, T))
 
-            # Layout: Row = direction (0=down, 1=up, 2=left, 3=right)
-            # Col: 0 = walk1, 1 = idle, 2 = walk2
-            frames = [
-                get_frame(1),  # Idle
-                get_frame(0),  # Walk 1
-                get_frame(2),  # Walk 2
-            ]
+            # Return all frames for this direction row
+            frames = [get_frame(c) for c in range(num_cols)]
             
             _player_cache[key] = frames
         else:
