@@ -323,15 +323,24 @@ def get_player_frames(direction: int) -> List[pygame.Surface]:
 
     if not _player_sheet_loaded:
         _player_sheet_loaded = True
-        try:
-            path = os.path.join(os.path.dirname(__file__), "assets", "images", "assetkarakter.png")
+        base = os.path.dirname(__file__)
+        # Try new filename first, fall back to old one
+        for fname in ("player_spritesheet.png", "assetkarakter.png"):
+            path = os.path.join(base, "assets", "images", fname)
             if os.path.exists(path):
-                _player_sheet = pygame.image.load(path).convert_alpha()
-                # Automatically remove background color based on top-left pixel
-                bg_color = _player_sheet.get_at((0, 0))
-                _player_sheet.set_colorkey(bg_color)
-        except pygame.error:
-            pass
+                try:
+                    _player_sheet = pygame.image.load(path).convert_alpha()
+                    # Automatically remove background color based on top-left pixel
+                    bg_color = _player_sheet.get_at((0, 0))
+                    _player_sheet.set_colorkey(bg_color)
+                except pygame.error:
+                    pass
+                break
+
+    # Spritesheet row mapping:
+    # Row 0 = Down, Row 1 = Left, Row 2 = Right, Row 3 = Up
+    # Game directions: DIR_DOWN=0, DIR_UP=1, DIR_LEFT=2, DIR_RIGHT=3
+    _DIR_TO_ROW = {0: 0, 1: 3, 2: 1, 3: 2}
 
     key = DIR_NAMES[direction]
     if key not in _player_cache:
@@ -341,9 +350,10 @@ def get_player_frames(direction: int) -> List[pygame.Surface]:
             num_cols = max(1, round(sheet_w / (sheet_h / 4)))
             fw = sheet_w // num_cols
             fh = sheet_h // 4
+            row = _DIR_TO_ROW.get(direction, direction)
             
             def get_frame(col: int) -> pygame.Surface:
-                rect = pygame.Rect(col * fw, direction * fh, fw, fh)
+                rect = pygame.Rect(col * fw, row * fh, fw, fh)
                 raw_frame = _player_sheet.subsurface(rect)
                 return pygame.transform.smoothscale(raw_frame, (T, T))
 
