@@ -116,7 +116,7 @@ class HUD:
         surface.blit(time_s, (bar_x + BAR_W + 8, bar_y))
 
         # --- Money (left) ---
-        money_s = self.font_value.render(f"💰 {inventory.money}g", True,
+        money_s = self.font_value.render(f"Gold: {inventory.money}g", True,
                                          PAL["text_gold"])
         surface.blit(money_s, (16, 10))
 
@@ -132,7 +132,7 @@ class HUD:
     def draw_stats(self, surface: pygame.Surface, player: Player) -> None:
         """Draw water and energy count on top bar (called separately with player data)."""
         # Water
-        water_s = self.font_value.render(f"💧 {player.water}/{player.water_max}", True,
+        water_s = self.font_value.render(f"Water: {player.water}/{player.water_max}", True,
                                          PAL["water_blue"])
         surface.blit(water_s, (SCREEN_W - water_s.get_width() - 16, 10))
 
@@ -149,8 +149,8 @@ class HUD:
             pygame.draw.rect(surface, color, (bx, by, int(bar_w * energy_pct), bar_h), border_radius=4)
         pygame.draw.rect(surface, (100, 100, 100), (bx, by, bar_w, bar_h), 1, border_radius=4)
 
-        eng_label = self.font_label.render("⚡", True, (255, 220, 50))
-        surface.blit(eng_label, (bx - eng_label.get_width() - 4, by - 2))
+        eng_label = self.font_label.render("Energy:", True, (255, 220, 50))
+        surface.blit(eng_label, (bx - eng_label.get_width() - 6, by - 2))
 
     # ---- Bottom bar ----------------------------------------------------
 

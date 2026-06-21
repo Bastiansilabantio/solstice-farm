@@ -269,6 +269,7 @@ class World:
                 screen_x = col * T + ox
                 screen_y = row * T + oy
                 surface.blit(tile_surf, (screen_x, screen_y))
+
                 # Draw crop on top
                 crop = self.crops.get((col, row))
                 if crop is not None:
@@ -316,3 +317,33 @@ class World:
             hx = hx_screen + (T // 2) - (scaled_img.get_width() // 2)
             hy = hy_screen + T - scaled_img.get_height()
             surface.blit(scaled_img, (hx, hy))
+
+        # Draw Text Markers (Shop, Well, House) after everything else
+        if not hasattr(self, '_font_marker'):
+            self._font_marker = pygame.font.SysFont(None, 20, bold=True)
+            
+        markers = [
+            (SHOP_X, SHOP_Y, "SHOP"),
+            (WELL_X, WELL_Y, "WELL"),
+            (HOUSE_X, HOUSE_Y, "HOUSE")
+        ]
+        
+        for mx, my, mtext in markers:
+            # Check if marker is in visible range
+            if start_col <= mx < end_col and start_row <= my < end_row:
+                screen_x = mx * T + ox
+                screen_y = my * T + oy
+                
+                text = self._font_marker.render(mtext, True, (255, 255, 255))
+                bg = pygame.Surface((text.get_width() + 6, text.get_height() + 4))
+                bg.fill((0, 0, 0))
+                bg.set_alpha(150)
+                
+                # For the house, put the text a bit higher so it sits above the door
+                y_offset = 15 if mtext == "HOUSE" else 4
+                
+                cx = screen_x + (T - text.get_width()) // 2
+                cy = screen_y - text.get_height() + y_offset
+                
+                surface.blit(bg, (cx - 3, cy - 2))
+                surface.blit(text, (cx, cy))
