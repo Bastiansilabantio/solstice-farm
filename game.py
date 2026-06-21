@@ -302,13 +302,6 @@ class Game:
                 play_sfx("deny")
 
         elif tool == TOOL_HANDS:
-            if self.world.is_shop(fc, fr):
-                self.shop.open()
-                play_sfx("select")
-                if self.tutorial and self.tutorial.active:
-                    self.tutorial.notify("shop_opened")
-                return
-
             result = self.world.harvest(fc, fr)
             if result:
                 crop_type, value = result

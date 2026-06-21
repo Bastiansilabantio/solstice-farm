@@ -196,7 +196,7 @@ class HUD:
         surface.blit(label, (210, SCREEN_H - BOT_H + 16))
 
         # Controls hint (right side)
-        hint = self.font_hint.render("WASD:Move  Space:Use  1-4:Tool",
+        hint = self.font_hint.render("WASD:Move  Space:Use  TAB:Shop  1-4:Tool",
                                      True, PAL["text_dim"])
         surface.blit(hint, (SCREEN_W - hint.get_width() - 12,
                             SCREEN_H - BOT_H + 32))
