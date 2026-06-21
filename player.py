@@ -47,6 +47,12 @@ class Player:
         self.water: int = WATER_CAN_START
         self.water_max: int = WATER_CAN_MAX
 
+        # Energy system
+        self.energy_max: float = 1000.0
+        self.energy: float = 1000.0
+        self.is_sleeping: bool = False
+        self.sleep_timer: float = 0.0
+
         # Action cooldown (prevents rapid-fire actions)
         self.action_cooldown: float = 0.0
         self.ACTION_DELAY: float = 0.25  # seconds
@@ -146,6 +152,11 @@ class Player:
 
     def update(self, dt: float, is_solid_fn) -> None:
         """Move the player based on held keys; collide with solid tiles."""
+        if self.is_sleeping:
+            # Energy regens faster while sleeping
+            self.energy = min(self.energy_max, self.energy + (self.energy_max / 15.0) * dt)
+            return
+
         self.action_cooldown = max(0.0, self.action_cooldown - dt)
 
         keys = pygame.key.get_pressed()
@@ -164,6 +175,10 @@ class Player:
             self.direction = DIR_RIGHT
 
         self.moving = dx != 0 or dy != 0
+
+        if self.moving:
+            # Drain energy while moving (e.g., 5 energy per second)
+            self.energy = max(0.0, self.energy - 5.0 * dt)
 
         # Normalize diagonal
         if dx != 0 and dy != 0:

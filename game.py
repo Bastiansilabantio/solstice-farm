@@ -173,8 +173,26 @@ class Game:
                 play_sfx("select")
                 return
 
+        # Wake up from sleep
+        if self.player.is_sleeping:
+            if event.type == pygame.KEYDOWN and event.key in (pygame.K_SPACE, pygame.K_f, pygame.K_RETURN):
+                self.player.is_sleeping = False
+                self._show_message("Bangun... ☀️")
+                play_sfx("select")
+            return
+
         # Player input
         action = self.player.handle_event(event)
+        
+        # Manual sleep trigger
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_f:
+            if self.world.is_house(self.player.tile_col, self.player.tile_row):
+                self.player.is_sleeping = True
+                self.player.water = self.player.water_max
+                self._show_message("Tidur... 💤 (Tekan SPACE untuk bangun)")
+                play_sfx("select")
+                return
+
         if action == "use_tool":
             self._use_tool()
         elif action == "cycle_seed":
@@ -201,7 +219,13 @@ class Game:
         py = fr * T + T // 2
 
         if tool == TOOL_HOE:
+            if self.player.energy < 30:
+                self._show_message("Energi habis! Istirahatlah di rumah.")
+                play_sfx("deny")
+                return
+            
             if self.world.till(fc, fr):
+                self.player.energy -= 30
                 self.particles.emit_till(px, py)
                 self._show_message("Tilled the soil!")
                 play_sfx("till")
@@ -229,7 +253,13 @@ class Game:
                 play_sfx("deny")
                 return
 
+            if self.player.energy < 20:
+                self._show_message("Energi habis! Istirahatlah di rumah.")
+                play_sfx("deny")
+                return
+
             if self.world.water_soil(fc, fr):
+                self.player.energy -= 20
                 self.player.water -= 1
                 self.particles.emit_water(px, py)
                 self._show_message("Watered!")
@@ -243,8 +273,15 @@ class Game:
                 self._show_message(f"No {seed_type} seeds! Buy at the shop.")
                 play_sfx("deny")
                 return
+
+            if self.player.energy < 25:
+                self._show_message("Energi habis! Istirahatlah di rumah.")
+                play_sfx("deny")
+                return
+
             if self.world.can_plant(fc, fr):
                 if self.inventory.use_seed(seed_type):
+                    self.player.energy -= 25
                     self.world.plant(fc, fr, seed_type)
                     self.particles.emit_plant(px, py)
                     name = CROPS[seed_type]["name"]
@@ -411,6 +448,8 @@ class Game:
         # Player
         self.player.update(dt, self.world.is_solid)
 
+        # House entry logic has been moved to manual input
+
         # Tutorial
         if self.tutorial and self.tutorial.active:
             self.tutorial.update(dt, self.player.tile_col,
@@ -501,11 +540,30 @@ class Game:
         if self._is_golden_hour():
             self._draw_golden_hour_glow()
 
+        # --- House Interaction Prompt ---
+        if not self.player.is_sleeping and self.world.is_house(self.player.tile_col, self.player.tile_row):
+            font = pygame.font.SysFont(None, 32)
+            prompt = font.render("Tekan [F] untuk Tidur", True, (255, 255, 255))
+            # Tambahkan outline hitam agar teks lebih mudah dibaca
+            prompt_bg = font.render("Tekan [F] untuk Tidur", True, (0, 0, 0))
+            bg_rect = prompt_bg.get_rect(center=(SCREEN_W // 2, SCREEN_H - 100))
+            self.screen.blit(prompt_bg, (bg_rect.x + 1, bg_rect.y + 1))
+            self.screen.blit(prompt, bg_rect)
+
         # --- HUD ---
         self.hud.draw(self.screen, self.player, self.inventory,
                       self.time_fraction)
-        self.hud.draw_water(self.screen, self.player.water,
-                            self.player.water_max)
+        self.hud.draw_stats(self.screen, self.player)
+
+        # --- Sleeping Overlay ---
+        if self.player.is_sleeping:
+            sleep_overlay = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
+            sleep_overlay.fill((0, 0, 0, 200))
+            self.screen.blit(sleep_overlay, (0, 0))
+            
+            font = pygame.font.SysFont(None, 48)
+            text = font.render("Zzz... (Tekan SPACE untuk bangun)", True, (200, 200, 255))
+            self.screen.blit(text, ((SCREEN_W - text.get_width()) // 2, SCREEN_H // 2))
 
         # --- Tutorial overlay ---
         if self.tutorial and self.tutorial.active:

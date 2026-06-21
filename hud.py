@@ -16,7 +16,7 @@ from settings import (
 from sprites import get_icon
 
 # Bar dimensions
-TOP_H = 42
+TOP_H = 56
 BOT_H = 52
 BAR_W = 280
 BAR_H = 14
@@ -129,12 +129,28 @@ class HUD:
         # We'll show water from draw call instead
         pass
 
-    def draw_water(self, surface: pygame.Surface, water: int,
-                   water_max: int) -> None:
-        """Draw water count on top bar (called separately with player data)."""
-        water_s = self.font_value.render(f"💧 {water}/{water_max}", True,
+    def draw_stats(self, surface: pygame.Surface, player: Player) -> None:
+        """Draw water and energy count on top bar (called separately with player data)."""
+        # Water
+        water_s = self.font_value.render(f"💧 {player.water}/{player.water_max}", True,
                                          PAL["water_blue"])
         surface.blit(water_s, (SCREEN_W - water_s.get_width() - 16, 10))
+
+        # Energy Bar
+        energy_pct = max(0.0, player.energy / player.energy_max)
+        bar_w = 120
+        bar_h = 12
+        bx = SCREEN_W - bar_w - 16
+        by = 38
+
+        pygame.draw.rect(surface, (50, 50, 50), (bx, by, bar_w, bar_h), border_radius=4)
+        if energy_pct > 0:
+            color = (255, 220, 50) if energy_pct > 0.25 else (220, 50, 50)
+            pygame.draw.rect(surface, color, (bx, by, int(bar_w * energy_pct), bar_h), border_radius=4)
+        pygame.draw.rect(surface, (100, 100, 100), (bx, by, bar_w, bar_h), 1, border_radius=4)
+
+        eng_label = self.font_label.render("⚡", True, (255, 220, 50))
+        surface.blit(eng_label, (bx - eng_label.get_width() - 4, by - 2))
 
     # ---- Bottom bar ----------------------------------------------------
 

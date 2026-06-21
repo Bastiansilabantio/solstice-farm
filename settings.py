@@ -28,6 +28,10 @@ SHOP_Y = 9
 WELL_X = 4
 WELL_Y = 8
 
+# House location (tile coords)
+HOUSE_X = 14
+HOUSE_Y = 3
+
 # ---------------------------------------------------------------------------
 # Gameplay
 # ---------------------------------------------------------------------------
@@ -73,8 +77,10 @@ TILE_FENCE = 6       # fence (solid)
 TILE_WATER = 7       # well / water source
 TILE_SHOP = 8        # shop interaction
 TILE_PLANTED = 9     # has crop planted
+TILE_HOUSE_DOOR = 10 # interactable door to rest
+TILE_HOUSE_WALL = 11 # solid part of the house
 
-SOLID_TILES = {TILE_TREE, TILE_FENCE}
+SOLID_TILES = {TILE_TREE, TILE_FENCE, TILE_HOUSE_WALL}
 
 # ---------------------------------------------------------------------------
 # Tools
