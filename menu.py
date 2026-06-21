@@ -78,7 +78,7 @@ class TitleScreen:
             prompt = "Press ENTER to start"
             ps = self.font_prompt.render(prompt, True, PAL["text_light"])
             surface.blit(ps, ((SCREEN_W - ps.get_width()) // 2,
-                              SCREEN_H - 100))
+                              SCREEN_H - 140))
 
         # Controls hint
         hints = [
@@ -90,14 +90,14 @@ class TitleScreen:
         for i, hint in enumerate(hints):
             hs = self.font_credit.render(hint, True, PAL["text_dim"])
             surface.blit(hs, ((SCREEN_W - hs.get_width()) // 2,
-                              SCREEN_H - 60 + i * 18))
+                              SCREEN_H - 100 + i * 18))
 
         # Credit
         credit = self.font_credit.render(
             "Made for DEV June Solstice Game Jam 2026", True,
             (100, 100, 80))
         surface.blit(credit, ((SCREEN_W - credit.get_width()) // 2,
-                              SCREEN_H - 20))
+                              SCREEN_H - 25))
 
     def check_start(self, event: pygame.event.Event) -> bool:
         if event.type == pygame.KEYDOWN:
