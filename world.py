@@ -272,12 +272,21 @@ class World:
 
                 # Draw House Image if door tile
                 if tile_type == TILE_HOUSE_DOOR:
-                    house_img = get_image("rumah.png")
-                    hw, hh = house_img.get_width(), house_img.get_height()
+                    if not hasattr(self, '_house_scaled'):
+                        house_img = get_image("rumah.png")
+                        hw, hh = house_img.get_width(), house_img.get_height()
+                        # Scale to fit ~3 tiles wide, keep aspect ratio
+                        target_w = T * 3
+                        scale_f = target_w / hw
+                        sw = int(hw * scale_f)
+                        sh = int(hh * scale_f)
+                        self._house_scaled = pygame.transform.smoothscale(
+                            house_img, (sw, sh))
+                    scaled_img = self._house_scaled
                     # Align bottom-center of the image with the bottom-center of the door tile
-                    hx = screen_x + (T // 2) - (hw // 2)
-                    hy = screen_y + T - hh
-                    surface.blit(house_img, (hx, hy))
+                    hx = screen_x + (T // 2) - (scaled_img.get_width() // 2)
+                    hy = screen_y + T - scaled_img.get_height()
+                    surface.blit(scaled_img, (hx, hy))
 
                 # Draw crop on top
                 crop = self.crops.get((col, row))
