@@ -269,25 +269,6 @@ class World:
                 screen_x = col * T + ox
                 screen_y = row * T + oy
                 surface.blit(tile_surf, (screen_x, screen_y))
-
-                # Draw House Image if door tile
-                if tile_type == TILE_HOUSE_DOOR:
-                    if not hasattr(self, '_house_scaled'):
-                        house_img = get_image("rumah.png")
-                        hw, hh = house_img.get_width(), house_img.get_height()
-                        # Scale to fit ~3 tiles wide, keep aspect ratio
-                        target_w = T * 3
-                        scale_f = target_w / hw
-                        sw = int(hw * scale_f)
-                        sh = int(hh * scale_f)
-                        self._house_scaled = pygame.transform.smoothscale(
-                            house_img, (sw, sh))
-                    scaled_img = self._house_scaled
-                    # Align bottom-center of the image with the bottom-center of the door tile
-                    hx = screen_x + (T // 2) - (scaled_img.get_width() // 2)
-                    hy = screen_y + T - scaled_img.get_height()
-                    surface.blit(scaled_img, (hx, hy))
-
                 # Draw crop on top
                 crop = self.crops.get((col, row))
                 if crop is not None:
@@ -303,8 +284,8 @@ class World:
                         drop_y = screen_y + 4
                         pygame.draw.circle(surface, (80, 160, 240),
                                            (drop_x, drop_y), 4)
-                        pygame.draw.circle(surface, (120, 200, 255),
-                                           (drop_x - 1, drop_y - 1), 2)
+                        pygame.draw.circle(surface, (200, 230, 255),
+                                           (drop_x - 1, drop_y - 1), 1)
 
                     # Harvest indicator
                     if crop.ready:
@@ -314,3 +295,24 @@ class World:
                         r = int(3 + pulse * 2)
                         pygame.draw.circle(surface, (255, 220, 50),
                                            (screen_x + T // 2, screen_y + 2), r)
+
+        # Draw House Image after all tiles so it doesn't get overwritten by tiles on its right
+        if start_row <= HOUSE_Y < end_row and start_col <= HOUSE_X < end_col:
+            if not hasattr(self, '_house_scaled'):
+                house_img = get_image("rumah.png")
+                hw, hh = house_img.get_width(), house_img.get_height()
+                # Scale to fit ~3 tiles wide, keep aspect ratio
+                target_w = T * 3
+                scale_f = target_w / hw
+                sw = int(hw * scale_f)
+                sh = int(hh * scale_f)
+                self._house_scaled = pygame.transform.smoothscale(
+                    house_img, (sw, sh))
+            scaled_img = self._house_scaled
+            
+            hx_screen = HOUSE_X * T + ox
+            hy_screen = HOUSE_Y * T + oy
+            # Align bottom-center of the image with the bottom-center of the door tile
+            hx = hx_screen + (T // 2) - (scaled_img.get_width() // 2)
+            hy = hy_screen + T - scaled_img.get_height()
+            surface.blit(scaled_img, (hx, hy))
