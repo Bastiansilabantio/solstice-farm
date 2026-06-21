@@ -233,7 +233,7 @@ class TileTooltip:
             return "Use Water Can (2) to refill"
 
         if tile_type == TILE_SHOP:
-            return "Press SPACE or TAB to shop"
+            return "Press TAB to shop"
 
         return None
 

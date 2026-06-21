@@ -55,7 +55,7 @@ STEPS = [
     ("shop",
      "🏪 Step 5: Visit the Shop",
      "Walk to the house on the right side of the map.\n"
-     "Face it and press SPACE or TAB to open the Shop.\n\n"
+     "Face it and press TAB to open the Shop.\n\n"
      "You can SELL crops for gold and BUY more seeds!"),
     ("done",
      "✅ Tutorial Complete!",
