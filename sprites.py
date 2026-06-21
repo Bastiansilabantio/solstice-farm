@@ -10,6 +10,7 @@ from __future__ import annotations
 import math
 import os
 import random
+import os
 from typing import Dict, List, Tuple
 
 import pygame
@@ -25,6 +26,7 @@ _tile_cache: Dict[str, pygame.Surface] = {}
 _player_cache: Dict[str, List[pygame.Surface]] = {}
 _crop_cache: Dict[str, List[pygame.Surface]] = {}
 _icon_cache: Dict[str, pygame.Surface] = {}
+_image_cache: Dict[str, pygame.Surface] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -590,6 +592,25 @@ def get_icon(name: str) -> pygame.Surface:
             s.fill((255, 0, 255))
             _icon_cache[name] = s
     return _icon_cache[name]
+
+
+def get_image(filename: str) -> pygame.Surface:
+    if filename not in _image_cache:
+        path = os.path.join("assets", filename)
+        if os.path.exists(path):
+            try:
+                img = pygame.image.load(path).convert_alpha()
+                _image_cache[filename] = img
+            except Exception as e:
+                print(f"Failed to load image {path}: {e}")
+                s = _make(128, 128)
+                s.fill((255, 0, 255))
+                _image_cache[filename] = s
+        else:
+            s = _make(128, 128)
+            s.fill((255, 0, 255))
+            _image_cache[filename] = s
+    return _image_cache[filename]
 
 
 # ===================================================================

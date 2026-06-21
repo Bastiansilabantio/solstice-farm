@@ -15,14 +15,15 @@ from farming import Crop
 from settings import (
     FARM_COLS, FARM_ROWS, FARM_X, FARM_Y,
     MAP_COLS, MAP_ROWS,
-    SHOP_X, SHOP_Y,
+    SHOP_X, SHOP_Y, HOUSE_X, HOUSE_Y,
     SOLID_TILES,
     TILE_DIRT, TILE_FENCE, TILE_GRASS, TILE_PATH,
     TILE_PLANTED, TILE_SHOP, TILE_SIZE,
     TILE_TILLED, TILE_TREE, TILE_WATER, TILE_WATERED,
+    TILE_HOUSE_DOOR, TILE_HOUSE_WALL,
     WELL_X, WELL_Y,
 )
-from sprites import get_crop_stages, get_tile
+from sprites import get_crop_stages, get_tile, get_image
 
 T = TILE_SIZE
 
@@ -38,6 +39,8 @@ _TILE_SPRITE = {
     TILE_WATER: "water_source",
     TILE_SHOP: "shop",
     TILE_PLANTED: "watered",  # planted soil looks like watered
+    TILE_HOUSE_WALL: "grass", # draw grass underneath the wall
+    TILE_HOUSE_DOOR: "grass", # draw grass underneath the door
 }
 
 
@@ -71,6 +74,12 @@ class World:
         return grid
 
     def _classify_tile(self, col: int, row: int) -> int:
+        # --- House ---
+        if HOUSE_X - 1 <= col <= HOUSE_X + 1 and HOUSE_Y - 2 <= row <= HOUSE_Y:
+            if col == HOUSE_X and row == HOUSE_Y:
+                return TILE_HOUSE_DOOR
+            return TILE_HOUSE_WALL
+
         # --- Boundaries: trees around the edges ---
         if row == 0 or row == self.rows - 1 or col == 0 or col == self.cols - 1:
             return TILE_TREE
@@ -225,6 +234,9 @@ class World:
     def is_shop(self, col: int, row: int) -> bool:
         return self.get_tile(col, row) == TILE_SHOP
 
+    def is_house(self, col: int, row: int) -> bool:
+        return self.get_tile(col, row) == TILE_HOUSE_DOOR
+
     # ------------------------------------------------------------------
     # Update
     # ------------------------------------------------------------------
@@ -257,6 +269,15 @@ class World:
                 screen_x = col * T + ox
                 screen_y = row * T + oy
                 surface.blit(tile_surf, (screen_x, screen_y))
+
+                # Draw House Image if door tile
+                if tile_type == TILE_HOUSE_DOOR:
+                    house_img = get_image("rumah.png")
+                    hw, hh = house_img.get_width(), house_img.get_height()
+                    # Align bottom-center of the image with the bottom-center of the door tile
+                    hx = screen_x + (T // 2) - (hw // 2)
+                    hy = screen_y + T - hh
+                    surface.blit(house_img, (hx, hy))
 
                 # Draw crop on top
                 crop = self.crops.get((col, row))
