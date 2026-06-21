@@ -1,6 +1,7 @@
 """main.py — Entry point for Solstice Farm."""
 
 import sys
+import asyncio
 
 import pygame
 
@@ -8,7 +9,7 @@ from game import Game
 from settings import FPS, SCREEN_H, SCREEN_W
 
 
-def main() -> None:
+async def main() -> None:
     pygame.init()
     pygame.display.set_caption("🌾 Solstice Farm — A Summer Solstice Farming Game")
     screen = pygame.display.set_mode((SCREEN_W, SCREEN_H), pygame.WINDOWMAXIMIZED | pygame.RESIZABLE | pygame.SCALED)
@@ -32,7 +33,8 @@ def main() -> None:
         game.update(dt)
         game.draw()
         pygame.display.flip()
+        await asyncio.sleep(0)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
