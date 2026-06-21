@@ -29,7 +29,7 @@ WELL_X = 4
 WELL_Y = 8
 
 # House location (tile coords)
-HOUSE_X = 14
+HOUSE_X = 12
 HOUSE_Y = 3
 
 # ---------------------------------------------------------------------------
