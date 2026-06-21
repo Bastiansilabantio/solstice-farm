@@ -596,17 +596,28 @@ def get_icon(name: str) -> pygame.Surface:
 
 def get_image(filename: str) -> pygame.Surface:
     if filename not in _image_cache:
-        path = os.path.join("assets", filename)
-        if os.path.exists(path):
-            try:
-                img = pygame.image.load(path).convert_alpha()
-                _image_cache[filename] = img
-            except Exception as e:
-                print(f"Failed to load image {path}: {e}")
-                s = _make(128, 128)
-                s.fill((255, 0, 255))
-                _image_cache[filename] = s
-        else:
+        base = os.path.dirname(__file__)
+        # Search in multiple locations
+        candidates = [
+            os.path.join(base, "assets", "images", filename),
+            os.path.join(base, "assets", filename),
+            os.path.join(base, filename),
+        ]
+        loaded = False
+        for path in candidates:
+            if os.path.exists(path):
+                try:
+                    img = pygame.image.load(path).convert_alpha()
+                    # Auto-remove background color based on top-left pixel
+                    bg_color = img.get_at((0, 0))
+                    if bg_color[3] > 200:  # only if top-left is opaque
+                        img.set_colorkey(bg_color)
+                    _image_cache[filename] = img
+                    loaded = True
+                except Exception as e:
+                    print(f"Failed to load image {path}: {e}")
+                break
+        if not loaded:
             s = _make(128, 128)
             s.fill((255, 0, 255))
             _image_cache[filename] = s
