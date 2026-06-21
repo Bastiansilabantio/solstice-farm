@@ -12,7 +12,7 @@ from settings import FPS, SCREEN_H, SCREEN_W
 async def main() -> None:
     pygame.init()
     pygame.display.set_caption("🌾 Solstice Farm — A Summer Solstice Farming Game")
-    screen = pygame.display.set_mode((SCREEN_W, SCREEN_H), pygame.WINDOWMAXIMIZED | pygame.RESIZABLE | pygame.SCALED)
+    screen = pygame.display.set_mode((SCREEN_W, SCREEN_H), pygame.RESIZABLE | pygame.SCALED)
     clock = pygame.time.Clock()
 
     game = Game(screen)
